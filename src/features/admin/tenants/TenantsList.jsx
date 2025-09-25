@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { adminService } from '../../../services/admin';
-import { toast } from 'react-toastify';
-import Button from '../../../components/Button';
-import Card from '../../../components/Card';
-import Badge from '../../../components/Badge';
-import Table from '../../../components/Table';
-import Loader from '../../../components/Loader';
-import EmptyState from '../../../components/EmptyState';
-import SearchBar from '../../../components/SearchBar';
-import TenantForm from './TenantForm';
+import { useState, useEffect } from "react";
+import { adminService } from "../../../services/admin";
+import { toast } from "react-toastify";
+import Button from "../../../components/Button";
+import Card from "../../../components/Card";
+import Badge from "../../../components/Badge";
+import Table from "../../../components/Table";
+import Loader from "../../../components/Loader";
+import EmptyState from "../../../components/EmptyState";
+import SearchBar from "../../../components/SearchBar";
+import TenantForm from "./TenantForm";
 
 const TenantsList = () => {
   const [tenants, setTenants] = useState([]);
@@ -27,7 +27,7 @@ const TenantsList = () => {
       setTenants(data.items || []);
       setFilteredTenants(data.items || []);
     } catch (error) {
-      toast.error('Failed to load tenants');
+      toast.error("Failed to load tenants");
     } finally {
       setLoading(false);
     }
@@ -37,9 +37,10 @@ const TenantsList = () => {
     if (!searchTerm) {
       setFilteredTenants(tenants);
     } else {
-      const filtered = tenants.filter(tenant =>
-        tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = tenants.filter(
+        (tenant) =>
+          tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredTenants(filtered);
     }
@@ -82,17 +83,14 @@ const TenantsList = () => {
           <p className="text-gray-600">Manage university tenants and their settings</p>
         </div>
         <Button onClick={handleCreate}>
-          <span className="mr-2">➕</span>
+          <span className="mr-2">+</span>
           Add Tenant
         </Button>
       </div>
 
       <Card>
         <Card.Content>
-          <SearchBar
-            onSearch={handleSearch}
-            placeholder="Search tenants..."
-          />
+          <SearchBar onSearch={handleSearch} placeholder="Search tenants..." />
         </Card.Content>
       </Card>
 
@@ -125,25 +123,17 @@ const TenantsList = () => {
                       </div>
                     </Table.Cell>
                     <Table.Cell>
-                      <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                        {tenant.slug}
-                      </code>
+                      <code className="text-sm bg-gray-100 px-2 py-1 rounded">{tenant.slug}</code>
                     </Table.Cell>
                     <Table.Cell>{tenant.contact_email}</Table.Cell>
                     <Table.Cell>
-                      <Badge variant={tenant.is_active ? 'active' : 'inactive'}>
-                        {tenant.is_active ? 'Active' : 'Inactive'}
+                      <Badge variant={tenant.is_active ? "active" : "inactive"}>
+                        {tenant.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </Table.Cell>
+                    <Table.Cell>{new Date(tenant.created_at).toLocaleDateString()}</Table.Cell>
                     <Table.Cell>
-                      {new Date(tenant.created_at).toLocaleDateString()}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(tenant)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(tenant)}>
                         Edit
                       </Button>
                     </Table.Cell>
@@ -155,13 +145,7 @@ const TenantsList = () => {
         </Card>
       )}
 
-      {showForm && (
-        <TenantForm
-          tenant={editingTenant}
-          onClose={handleFormClose}
-          onSuccess={handleFormSuccess}
-        />
-      )}
+      {showForm && <TenantForm tenant={editingTenant} onClose={handleFormClose} onSuccess={handleFormSuccess} />}
     </div>
   );
 };
