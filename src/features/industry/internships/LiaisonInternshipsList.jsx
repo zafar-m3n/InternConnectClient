@@ -1,14 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { internshipsService } from '../../../services/internships';
-import { toast } from 'react-toastify';
-import Button from '../../../components/Button';
-import Card from '../../../components/Card';
-import Badge from '../../../components/Badge';
-import Loader from '../../../components/Loader';
-import EmptyState from '../../../components/EmptyState';
-import SearchBar from '../../../components/SearchBar';
-import Table from '../../../components/Table';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { internshipsService } from "../../../services/internships";
+import { toast } from "react-toastify";
+import Button from "../../../components/Button";
+import Card from "../../../components/Card";
+import Badge from "../../../components/Badge";
+import Loader from "../../../components/Loader";
+import EmptyState from "../../../components/EmptyState";
+import SearchBar from "../../../components/SearchBar";
+import Table from "../../../components/Table";
+
+const MAX_CHARS = 40;
+const truncate = (str, n = MAX_CHARS) => {
+  if (!str) return "";
+  return str.length > n ? str.slice(0, n - 1) + "…" : str;
+};
 
 const LiaisonInternshipsList = () => {
   const [internships, setInternships] = useState([]);
@@ -18,27 +24,27 @@ const LiaisonInternshipsList = () => {
     fetchInternships();
   }, []);
 
-  const fetchInternships = async (searchTerm = '') => {
+  const fetchInternships = async (searchTerm = "") => {
     try {
       const params = searchTerm ? { search: searchTerm } : {};
       const data = await internshipsService.list(params);
       setInternships(data.internships || []);
     } catch (error) {
-      toast.error('Failed to load internships');
+      toast.error("Failed to load internships");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this internship?')) return;
+    if (!confirm("Are you sure you want to delete this internship?")) return;
 
     try {
       await internshipsService.remove(id);
-      setInternships(prev => prev.filter(internship => internship.id !== id));
-      toast.success('Internship deleted successfully');
+      setInternships((prev) => prev.filter((internship) => internship.id !== id));
+      toast.success("Internship deleted successfully");
     } catch (error) {
-      toast.error('Failed to delete internship');
+      toast.error("Failed to delete internship");
     }
   };
 
@@ -59,7 +65,7 @@ const LiaisonInternshipsList = () => {
         </div>
         <Link to="/industry/internships/new">
           <Button>
-            <span className="mr-2">➕</span>
+            <span className="mr-2">+</span>
             Create Internship
           </Button>
         </Link>
@@ -67,11 +73,7 @@ const LiaisonInternshipsList = () => {
 
       <Card>
         <Card.Content>
-          <SearchBar
-            onSearch={fetchInternships}
-            placeholder="Search internships..."
-            className="mb-6"
-          />
+          <SearchBar onSearch={fetchInternships} placeholder="Search internships..." className="mb-6" />
         </Card.Content>
       </Card>
 
@@ -82,7 +84,7 @@ const LiaisonInternshipsList = () => {
           action={
             <Link to="/industry/internships/new">
               <Button>
-                <span className="mr-2">➕</span>
+                <span className="mr-2">+</span>
                 Create Internship
               </Button>
             </Link>
@@ -104,50 +106,55 @@ const LiaisonInternshipsList = () => {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {internships.map((internship) => (
-                  <Table.Row key={internship.id}>
-                    <Table.Cell>
-                      <div>
-                        <p className="font-medium text-gray-900">{internship.title}</p>
-                        <p className="text-sm text-gray-500 line-clamp-1">{internship.description}</p>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>{internship.company}</Table.Cell>
-                    <Table.Cell>{internship.location}</Table.Cell>
-                    <Table.Cell>
-                      <Badge variant={internship.status}>{internship.status}</Badge>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {new Date(internship.created_at).toLocaleDateString()}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="flex space-x-2">
-                        <Link to={`/industry/internships/${internship.id}`}>
-                          <Button size="sm" variant="outline">
-                            View
+                {internships.map((internship) => {
+                  const fullTitle = internship?.title || "";
+                  const fullDesc = internship?.description || "";
+
+                  return (
+                    <Table.Row key={internship.id}>
+                      <Table.Cell>
+                        <div>
+                          <p className="font-medium text-gray-900" title={fullTitle}>
+                            {truncate(fullTitle)}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1" title={fullDesc}>
+                            {truncate(fullDesc)}
+                          </p>
+                        </div>
+                      </Table.Cell>
+                      <Table.Cell>{internship.company}</Table.Cell>
+                      <Table.Cell>{internship.location}</Table.Cell>
+                      <Table.Cell>
+                        <Badge variant={internship.status}>{internship.status}</Badge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {internship.created_at ? new Date(internship.created_at).toLocaleDateString() : "—"}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <div className="flex space-x-2">
+                          <Link to={`/industry/internships/${internship.id}`}>
+                            <Button size="sm" variant="outline">
+                              View
+                            </Button>
+                          </Link>
+                          <Link to={`/industry/internships/${internship.id}/edit`}>
+                            <Button size="sm" variant="outline">
+                              Edit
+                            </Button>
+                          </Link>
+                          <Link to={`/industry/applicants?internship=${internship.id}`}>
+                            <Button size="sm" variant="outline">
+                              Applicants
+                            </Button>
+                          </Link>
+                          <Button size="sm" variant="danger" onClick={() => handleDelete(internship.id)}>
+                            Delete
                           </Button>
-                        </Link>
-                        <Link to={`/industry/internships/${internship.id}/edit`}>
-                          <Button size="sm" variant="outline">
-                            Edit
-                          </Button>
-                        </Link>
-                        <Link to={`/industry/applicants?internship=${internship.id}`}>
-                          <Button size="sm" variant="outline">
-                            Applicants
-                          </Button>
-                        </Link>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleDelete(internship.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
+                        </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
               </Table.Body>
             </Table>
           </Card.Content>
