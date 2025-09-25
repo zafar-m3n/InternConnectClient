@@ -8,6 +8,8 @@ import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import Badge from "../../components/Badge";
 import Button from "../../components/Button";
+import Modal from "../../components/Modal";
+import Select from "../../components/Select";
 import { internshipsService } from "../../services/internships";
 import { applicationsService } from "../../services/applications";
 
@@ -34,8 +36,16 @@ const getCVPreviewUrl = (cvPath) => {
 const formatDate = (d) => {
   if (!d) return "—";
   const dt = new Date(d);
-  return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString();
+  return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 };
+
+const statusOptions = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "shortlisted", label: "Shortlisted" },
+  { value: "accepted", label: "Accepted" },
+  { value: "rejected", label: "Rejected" },
+];
 
 export default function CompanyPortalPage() {
   const { search } = useLocation();
@@ -45,12 +55,18 @@ export default function CompanyPortalPage() {
 
   const [checking, setChecking] = useState(true);
   const [valid, setValid] = useState(false);
-  const [expiry, setExpiry] = useState(null); // Date | null
+  const [expiry, setExpiry] = useState(null);
   const [internship, setInternship] = useState(null);
   const [applications, setApplications] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
-  // Validate token against localStorage & expiry window
+  const [filterStatus, setFilterStatus] = useState(statusOptions[0]);
+  const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
+  const [acceptanceModalOpen, setAcceptanceModalOpen] = useState(false);
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  // Validate token
   useEffect(() => {
     const doCheck = () => {
       if (!token || !jobId) {
@@ -80,25 +96,30 @@ export default function CompanyPortalPage() {
     doCheck();
   }, [token, jobId]);
 
-  // Load data: API first, fallback to snapshot
+  // Load data
   useEffect(() => {
     const load = async () => {
       if (!valid || !jobId) return;
       setLoadingData(true);
       try {
+        const localApps = localStorage.getItem(`cpl_apps_${jobId}`);
+        if (localApps) {
+          setApplications(JSON.parse(localApps));
+        }
+
         const [internshipResp, appsResp] = await Promise.all([
           internshipsService.get(jobId),
           applicationsService.byInternship(jobId),
         ]);
         setInternship(internshipResp);
         setApplications(appsResp || []);
-        // Save snapshot for offline / backend-less display later
+
+        localStorage.setItem(`cpl_apps_${jobId}`, JSON.stringify(appsResp || []));
         localStorage.setItem(
           keyForSnapshot(jobId),
           JSON.stringify({ internship: internshipResp, applications: appsResp || [] })
         );
       } catch (err) {
-        // Fallback to snapshot
         try {
           const snapRaw = localStorage.getItem(keyForSnapshot(jobId));
           if (snapRaw) {
@@ -119,18 +140,59 @@ export default function CompanyPortalPage() {
     load();
   }, [valid, jobId]);
 
-  const disabled = useMemo(() => !valid, [valid]);
+  const handleStatusChange = async (applicationId, status, rejection_reason = null) => {
+    try {
+      const payload = { status, rejection_reason };
+      const updatedApp = await applicationsService.changeStatus(applicationId, payload);
+
+      const updatedApps = applications.map((app) =>
+        app.id === applicationId ? { ...app, status: updatedApp.status, rejection_reason: updatedApp.rejection_reason } : app
+      );
+      setApplications(updatedApps);
+      localStorage.setItem(`cpl_apps_${jobId}`, JSON.stringify(updatedApps));
+      toast.success("Applicant status updated!");
+    } catch (error) {
+      toast.error(error?.response?.data?.error || "Failed to update status.");
+    }
+  };
+
+  const openRejectionModal = (applicant) => {
+    setSelectedApplicant(applicant);
+    setRejectionReason("");
+    setRejectionModalOpen(true);
+  };
+
+  const openAcceptanceModal = (applicant) => {
+    setSelectedApplicant(applicant);
+    setAcceptanceModalOpen(true);
+  };
+
+  const handleRejectSubmit = () => {
+    if (!rejectionReason) {
+      toast.error("Please provide a reason for rejection.");
+      return;
+    }
+    handleStatusChange(selectedApplicant.id, "rejected", rejectionReason);
+    setRejectionModalOpen(false);
+  };
+
+  const handleAcceptSubmit = () => {
+    handleStatusChange(selectedApplicant.id, 'accepted');
+    setAcceptanceModalOpen(false);
+  };
+
+  const filteredApplications = useMemo(() => {
+    if (filterStatus.value === "all") {
+      return applications;
+    }
+    return applications.filter((app) => app.status === filterStatus.value);
+  }, [applications, filterStatus]);
 
   if (checking) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader size="lg" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-16"><Loader size="lg" /></div>;
   }
 
   if (!valid) {
-    // Expired or invalid
     return (
       <div className="max-w-3xl mx-auto text-center py-16">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Link unavailable</h1>
@@ -140,55 +202,41 @@ export default function CompanyPortalPage() {
     );
   }
 
-  const expiryBanner = expiry
-    ? `This link expires on ${formatDate(expiry)}`
-    : "This link has a limited validity period";
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Banner */}
-      <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-800">{expiryBanner}</div>
+      <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-800">
+        {expiry ? `This link expires on ${formatDate(expiry)}` : "This link has a limited validity period"}
+      </div>
 
-      {/* Job header */}
       <Card>
         <Card.Header>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{internship?.title || "Internship"}</h1>
-              <p className="text-gray-600">
-                {internship?.company} • {internship?.location}
-              </p>
+              <p className="text-gray-600">{internship?.company} • {internship?.location}</p>
             </div>
             {internship?.status && <Badge variant={internship.status}>{internship.status}</Badge>}
           </div>
         </Card.Header>
-        <Card.Content>
-          <div className="space-y-3">
-            {internship?.application_deadline && (
-              <div className="text-sm text-gray-600">
-                Application deadline: <span className="font-medium">{formatDate(internship.application_deadline)}</span>
-              </div>
-            )}
-            {internship?.description && <p className="text-gray-800 whitespace-pre-line">{internship.description}</p>}
-          </div>
-        </Card.Content>
       </Card>
 
-      {/* Applicants */}
-      {loadingData ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader size="lg" />
-        </div>
+      {loadingData && applications.length === 0 ? (
+        <div className="flex items-center justify-center py-16"><Loader size="lg" /></div>
       ) : !applications || applications.length === 0 ? (
-        <EmptyState
-          title="No applicants"
-          description="No student applications were found for this internship."
-          icon={() => <div className="text-4xl">📭</div>}
-        />
+        <EmptyState title="No applicants" description="No applications found for this internship." />
       ) : (
         <Card>
           <Card.Header>
-            <h2 className="text-xl font-semibold text-gray-900">Applicants ({applications.length})</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Applicants ({filteredApplications.length})</h2>
+              <div className="w-48">
+                <Select
+                  options={statusOptions}
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                />
+              </div>
+            </div>
           </Card.Header>
           <Card.Content className="p-0">
             <Table>
@@ -196,13 +244,13 @@ export default function CompanyPortalPage() {
                 <Table.Row>
                   <Table.Head>Student</Table.Head>
                   <Table.Head>Contact</Table.Head>
-                  <Table.Head>Profile</Table.Head>
                   <Table.Head>CV</Table.Head>
+                  <Table.Head>Status</Table.Head>
                   <Table.Head>Actions</Table.Head>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {applications.map((app) => {
+                {filteredApplications.map((app) => {
                   const s = app.student || {};
                   const prof = s.StudentProfile || {};
                   const cvUrl = getCVPreviewUrl(prof.cv_file_path);
@@ -215,62 +263,53 @@ export default function CompanyPortalPage() {
                           <p className="text-xs text-gray-500">{prof.student_id || "—"}</p>
                         </div>
                       </Table.Cell>
-
                       <Table.Cell>
                         <div className="text-sm text-gray-700 space-y-1">
-                          <div className="flex items-center">
-                            <span className="mr-1">📧</span>
-                            {s.email}
-                          </div>
-                          {prof.phone && (
-                            <div className="flex items-center">
-                              <span className="mr-1">📞</span>
-                              {prof.phone}
-                            </div>
-                          )}
+                          <div>📧 {s.email}</div>
+                          {prof.phone && <div>📞 {prof.phone}</div>}
                         </div>
                       </Table.Cell>
-
-                      <Table.Cell>
-                        <div className="text-sm">
-                          <div className="text-gray-900">{prof.degree || "—"}</div>
-                          <div className="text-gray-500">Year {prof.year_of_study || "—"}</div>
-                          {prof.skills && <div className="text-xs text-gray-500 mt-1">{prof.skills}</div>}
-                        </div>
-                      </Table.Cell>
-
                       <Table.Cell>
                         {prof.cv_file_path ? (
                           <div className="flex items-center space-x-2">
                             <Badge variant={prof.cv_status || "pending"}>{prof.cv_status || "pending"}</Badge>
                             {prof.cv_status === "approved" && cvUrl && (
-                              <a
-                                href={cvUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary-600 hover:text-primary-500"
-                                title="Open CV"
-                              >
-                                📄
-                              </a>
+                              <a href={cvUrl} target="_blank" rel="noopener noreferrer" title="Open CV">📄</a>
                             )}
                           </div>
                         ) : (
                           <span className="text-gray-500 text-sm">No CV</span>
                         )}
                       </Table.Cell>
-
-                      {/* Actions */}
                       <Table.Cell>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            toast.success(`Schedule interview for ${s.full_name}`);
-                          }}
-                          disabled={disabled}
-                        >
-                          Schedule Interview
-                        </Button>
+                        <Badge variant={app.status}>{app.status}</Badge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <div className="flex items-center space-x-2">
+                          {app.status === 'pending' && (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => handleStatusChange(app.id, 'shortlisted')}>
+                                Shortlist
+                              </Button>
+                              <Button size="sm" variant="danger" onClick={() => openRejectionModal(app)}>
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {app.status === 'shortlisted' && (
+                            <>
+                              <Button size="sm" onClick={() => toast.info(`Interview for ${s.full_name}`)}>
+                                Schedule Interview
+                              </Button>
+                              <Button size="sm" variant="success" onClick={() => openAcceptanceModal(app)}>
+                                Accept
+                              </Button>
+                              <Button size="sm" variant="danger" onClick={() => openRejectionModal(app)}>
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </Table.Cell>
                     </Table.Row>
                   );
@@ -280,6 +319,39 @@ export default function CompanyPortalPage() {
           </Card.Content>
         </Card>
       )}
+
+      <Modal
+        isOpen={rejectionModalOpen}
+        onClose={() => setRejectionModalOpen(false)}
+        title={`Reject Applicant: ${selectedApplicant?.student?.full_name}`}>
+        <div>
+          <p className="mb-4">Please provide a reason for rejecting this applicant. This will be saved for your records.</p>
+          <textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            className="w-full p-2 border rounded-md"
+            rows="4"
+            placeholder="e.g., Not a good fit for the role..."
+          />
+        </div>
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button variant="secondary" onClick={() => setRejectionModalOpen(false)}>Cancel</Button>
+          <Button variant="danger" onClick={handleRejectSubmit}>Confirm Rejection</Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={acceptanceModalOpen}
+        onClose={() => setAcceptanceModalOpen(false)}
+        title={`Accept Applicant: ${selectedApplicant?.student?.full_name}`}>
+        <div>
+          <p>Are you sure you want to accept this applicant?</p>
+        </div>
+        <div className="flex justify-end space-x-3 mt-6">
+          <Button variant="secondary" onClick={() => setAcceptanceModalOpen(false)}>Cancel</Button>
+          <Button variant="success" onClick={handleAcceptSubmit}>Confirm Acceptance</Button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -16,8 +16,8 @@ export const applicationsService = {
     return response.data;
   },
 
-  changeStatus: async (applicationId, status) => {
-    const response = await api.patch(`/applications/${applicationId}/status`, { status });
+  changeStatus: async (applicationId, payload) => {
+    const response = await api.patch(`/applications/${applicationId}/status`, payload);
     return response.data;
   }
 };

@@ -1,29 +1,30 @@
 import { classNames } from '../lib/ui';
 
-const Button = ({ 
-  children, 
-  variant = 'primary', 
-  size = 'md', 
-  loading = false, 
+const Button = ({
+  children,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
   disabled = false,
   className = '',
-  ...props 
+  ...props
 }) => {
   const baseClasses = 'btn';
-  
+
   const variants = {
     primary: 'btn-primary',
     secondary: 'btn-secondary',
+    success: 'border border-transparent bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
     danger: 'btn-danger',
     outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-primary-500'
   };
-  
+
   const sizes = {
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2 text-sm',
     lg: 'px-6 py-3 text-base'
   };
-  
+
   return (
     <button
       className={classNames(

@@ -262,11 +262,9 @@ const LiaisonInternshipDetail = () => {
             </Card.Content>
           </Card>
 
-          {showMagicLink && (
-            <Button className="w-full !my-4" size="lg" onClick={handleGenerateMagicLink} loading={generating}>
-              Generate Company Link
-            </Button>
-          )}
+          <Button className="w-full !my-4" size="lg" onClick={handleGenerateMagicLink} loading={generating}>
+            Generate Company Link
+          </Button>
 
           <Link to={`/industry/applicants?internship=${internship.id}`}>
             <Button className="w-full" size="lg">
