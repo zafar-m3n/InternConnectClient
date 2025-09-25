@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { internshipsService } from "../../../services/internships";
 import { toast } from "react-toastify";
+import { Icon } from "@iconify/react";
 import Button from "../../../components/Button";
 import Card from "../../../components/Card";
 import Badge from "../../../components/Badge";
@@ -10,10 +11,32 @@ import EmptyState from "../../../components/EmptyState";
 import SearchBar from "../../../components/SearchBar";
 import Table from "../../../components/Table";
 
-const MAX_CHARS = 40;
+const MAX_CHARS = 35;
 const truncate = (str, n = MAX_CHARS) => {
   if (!str) return "";
   return str.length > n ? str.slice(0, n - 1) + "…" : str;
+};
+
+// --- deadline helpers ---
+const formatDate = (d) => {
+  if (!d) return "—";
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString();
+};
+
+const getDeadlineInfo = (deadline) => {
+  if (!deadline) return { label: "—", variant: "secondary" };
+  const now = new Date();
+  const dt = new Date(deadline);
+  if (isNaN(dt.getTime())) return { label: "—", variant: "secondary" };
+
+  const msDiff = dt.getTime() - now.getTime();
+  const days = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
+
+  if (days < 0) return { label: "Expired", variant: "danger" };
+  if (days === 0) return { label: "Closes today", variant: "warning" };
+  if (days === 1) return { label: "1 day left", variant: "warning" };
+  return { label: `${days} days left`, variant: days <= 7 ? "warning" : "success" };
 };
 
 const LiaisonInternshipsList = () => {
@@ -65,7 +88,7 @@ const LiaisonInternshipsList = () => {
         </div>
         <Link to="/industry/internships/new">
           <Button>
-            <span className="mr-2">+</span>
+            <Icon icon="mdi:plus" width={18} height={18} className="mr-2" />
             Create Internship
           </Button>
         </Link>
@@ -84,7 +107,7 @@ const LiaisonInternshipsList = () => {
           action={
             <Link to="/industry/internships/new">
               <Button>
-                <span className="mr-2">+</span>
+                <Icon icon="mdi:plus" width={18} height={18} className="mr-2" />
                 Create Internship
               </Button>
             </Link>
@@ -101,7 +124,7 @@ const LiaisonInternshipsList = () => {
                   <Table.Head>Company</Table.Head>
                   <Table.Head>Location</Table.Head>
                   <Table.Head>Status</Table.Head>
-                  <Table.Head>Created</Table.Head>
+                  <Table.Head>Deadline</Table.Head>
                   <Table.Head>Actions</Table.Head>
                 </Table.Row>
               </Table.Header>
@@ -109,6 +132,7 @@ const LiaisonInternshipsList = () => {
                 {internships.map((internship) => {
                   const fullTitle = internship?.title || "";
                   const fullDesc = internship?.description || "";
+                  const deadline = getDeadlineInfo(internship.application_deadline);
 
                   return (
                     <Table.Row key={internship.id}>
@@ -128,27 +152,34 @@ const LiaisonInternshipsList = () => {
                         <Badge variant={internship.status}>{internship.status}</Badge>
                       </Table.Cell>
                       <Table.Cell>
-                        {internship.created_at ? new Date(internship.created_at).toLocaleDateString() : "—"}
+                        {internship.application_deadline ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">{formatDate(internship.application_deadline)}</span>
+                            <Badge variant={deadline.variant}>{deadline.label}</Badge>
+                          </div>
+                        ) : (
+                          "—"
+                        )}
                       </Table.Cell>
                       <Table.Cell>
                         <div className="flex space-x-2">
                           <Link to={`/industry/internships/${internship.id}`}>
                             <Button size="sm" variant="outline">
-                              View
+                              <Icon icon="mdi:eye-outline" width={18} height={18} />
                             </Button>
                           </Link>
                           <Link to={`/industry/internships/${internship.id}/edit`}>
                             <Button size="sm" variant="outline">
-                              Edit
+                              <Icon icon="mdi:pencil-outline" width={18} height={18} />
                             </Button>
                           </Link>
                           <Link to={`/industry/applicants?internship=${internship.id}`}>
                             <Button size="sm" variant="outline">
-                              Applicants
+                              <Icon icon="mdi:account-group-outline" width={18} height={18} />
                             </Button>
                           </Link>
                           <Button size="sm" variant="danger" onClick={() => handleDelete(internship.id)}>
-                            Delete
+                            <Icon icon="mdi:trash-can-outline" width={18} height={18} />
                           </Button>
                         </div>
                       </Table.Cell>
