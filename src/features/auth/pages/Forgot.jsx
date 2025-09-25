@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { toast } from 'react-toastify';
-import { authService } from '../../../services/auth';
-import Button from '../../../components/Button';
-import Input from '../../../components/Input';
-import Card from '../../../components/Card';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { toast } from "react-toastify";
+import { authService } from "../../../services/auth";
+import Button from "../../../components/Button";
+import Input from "../../../components/Input";
+import Card from "../../../components/Card";
 
 const schema = yup.object({
-  email: yup.string().email('Invalid email').required('Email is required')
+  email: yup.string().email("Invalid email").required("Email is required"),
 });
 
 const Forgot = () => {
@@ -20,9 +20,9 @@ const Forgot = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors }
+    formState: { errors },
   } = useForm({
-    resolver: yupResolver(schema)
+    resolver: yupResolver(schema),
   });
 
   const onSubmit = async (data) => {
@@ -30,9 +30,9 @@ const Forgot = () => {
     try {
       await authService.forgotPassword(data.email);
       setSent(true);
-      toast.success('Password reset link sent to your email');
+      toast.success("Password reset link sent to your email");
     } catch (error) {
-      toast.error(error.message || 'Failed to send reset link');
+      toast.error(error.message || "Failed to send reset link");
     } finally {
       setLoading(false);
     }
@@ -40,18 +40,13 @@ const Forgot = () => {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full">
           <Card>
             <Card.Content className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Check your email</h2>
-              <p className="text-gray-600 mb-6">
-                We've sent a password reset link to your email address.
-              </p>
-              <Link
-                to="/login"
-                className="text-primary-600 hover:text-primary-500"
-              >
+              <p className="text-gray-600 mb-6">We've sent a password reset link to your email address.</p>
+              <Link to="/login" className="text-primary-600 hover:text-primary-500">
                 Back to login
               </Link>
             </Card.Content>
@@ -62,7 +57,7 @@ const Forgot = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900">Forgot Password</h2>
@@ -72,27 +67,15 @@ const Forgot = () => {
         <Card>
           <Card.Content>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <Input
-                label="Email"
-                type="email"
-                {...register('email')}
-                error={errors.email?.message}
-              />
+              <Input label="Email" type="email" {...register("email")} error={errors.email?.message} />
 
-              <Button
-                type="submit"
-                loading={loading}
-                className="w-full"
-              >
+              <Button type="submit" loading={loading} className="w-full">
                 Send Reset Link
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <Link
-                to="/login"
-                className="text-sm text-primary-600 hover:text-primary-500"
-              >
+              <Link to="/login" className="text-sm text-primary-600 hover:text-primary-500">
                 Back to login
               </Link>
             </div>
