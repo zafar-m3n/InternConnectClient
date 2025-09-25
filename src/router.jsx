@@ -8,6 +8,9 @@ import Register from "./features/auth/pages/Register";
 import Forgot from "./features/auth/pages/Forgot";
 import Reset from "./features/auth/pages/Reset";
 
+//Company pages
+import CompanyPortalPage from "./pages/public/CompanyPublicPortal";
+
 // Student pages
 import StudentDashboard from "./features/student/dashboard/StudentDashboard";
 import StudentProfile from "./features/student/profile/StudentProfile";
@@ -60,6 +63,8 @@ const Router = () => {
         path="/reset"
         element={!user ? <Reset /> : <Navigate to={HOME_BY_ROLE[user.role] || "/login"} replace />}
       />
+
+      <Route path="/p/company" element={<CompanyPortalPage />} />
       {/* Student routes */}
       <Route
         path="/student/dashboard"

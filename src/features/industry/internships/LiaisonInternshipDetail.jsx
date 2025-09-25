@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { internshipsService } from '../../../services/internships';
-import { toast } from 'react-toastify';
-import Button from '../../../components/Button';
-import Card from '../../../components/Card';
-import Badge from '../../../components/Badge';
-import Loader from '../../../components/Loader';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { internshipsService } from "../../../services/internships";
+import { toast } from "react-toastify";
+import Button from "../../../components/Button";
+import Card from "../../../components/Card";
+import Badge from "../../../components/Badge";
+import Loader from "../../../components/Loader";
+
+const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
 const LiaisonInternshipDetail = () => {
   const { id } = useParams();
   const [internship, setInternship] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     fetchInternship();
@@ -21,9 +24,80 @@ const LiaisonInternshipDetail = () => {
       const data = await internshipsService.get(id);
       setInternship(data);
     } catch (error) {
-      toast.error('Failed to load internship details');
+      toast.error("Failed to load internship details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- Frontend-only mock helpers ---
+  const base64url = (bytes) => {
+    let s = "";
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+
+  const generateToken = (len = 32) => {
+    const arr = new Uint8Array(len);
+    (window.crypto || window.msCrypto).getRandomValues(arr);
+    return base64url(arr);
+  };
+
+  const buildStaticMagicLink = (job) => {
+    const params = new URLSearchParams({
+      token: job.token,
+      job: job.internshipId,
+    });
+    return `${window.location.origin}/p/company?${params.toString()}`;
+  };
+
+  const getKey = (internshipId) => `cpl_${internshipId}`;
+
+  const handleGenerateMagicLink = async () => {
+    if (!internship) return;
+    setGenerating(true);
+    try {
+      const deadline = internship.application_deadline ? new Date(internship.application_deadline) : null;
+      const expiresAt = deadline ? new Date(deadline.getTime() + TWO_WEEKS_MS) : new Date(Date.now() + TWO_WEEKS_MS);
+
+      const key = getKey(internship.id);
+      const now = new Date();
+      let record = null;
+
+      // Reuse if exists and not expired
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.token && parsed?.expiresAt && new Date(parsed.expiresAt) > now) {
+            record = parsed;
+          }
+        }
+      } catch (_) {
+        // ignore parse errors
+      }
+
+      if (!record) {
+        record = {
+          internshipId: internship.id,
+          token: generateToken(32),
+          expiresAt: expiresAt.toISOString(),
+        };
+        localStorage.setItem(key, JSON.stringify(record));
+      }
+
+      const url = buildStaticMagicLink(record);
+
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Magic link generated and copied to clipboard");
+      } else {
+        toast.success("Magic link generated");
+      }
+    } catch {
+      toast.error("Failed to generate magic link");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -46,6 +120,14 @@ const LiaisonInternshipDetail = () => {
     );
   }
 
+  // Compute visibility for the magic link button:
+  const deadline = internship.application_deadline ? new Date(internship.application_deadline) : null;
+  const now = new Date();
+  const showMagicLink =
+    !!deadline &&
+    now.getTime() > deadline.getTime() && // deadline passed
+    now.getTime() <= deadline.getTime() + TWO_WEEKS_MS; // within 14 days after
+
   return (
     <div className="space-y-8">
       <div>
@@ -56,7 +138,7 @@ const LiaisonInternshipDetail = () => {
           <span className="mr-2">←</span>
           Back to internships
         </Link>
-        
+
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{internship.title}</h1>
@@ -104,7 +186,7 @@ const LiaisonInternshipDetail = () => {
               </Card.Header>
               <Card.Content>
                 <div className="flex flex-wrap gap-2">
-                  {internship.skills.split(', ').map((skill, index) => (
+                  {internship.skills.split(", ").map((skill, index) => (
                     <Badge key={index} variant="default">
                       {skill}
                     </Badge>
@@ -172,15 +254,19 @@ const LiaisonInternshipDetail = () => {
                     <span className="mr-3">⏰</span>
                     <div>
                       <p className="text-sm text-gray-600">Application Deadline</p>
-                      <p className="font-medium">
-                        {new Date(internship.application_deadline).toLocaleDateString()}
-                      </p>
+                      <p className="font-medium">{new Date(internship.application_deadline).toLocaleDateString()}</p>
                     </div>
                   </div>
                 )}
               </div>
             </Card.Content>
           </Card>
+
+          {showMagicLink && (
+            <Button className="w-full !my-4" size="lg" onClick={handleGenerateMagicLink} loading={generating}>
+              Generate Company Link
+            </Button>
+          )}
 
           <Link to={`/industry/applicants?internship=${internship.id}`}>
             <Button className="w-full" size="lg">
