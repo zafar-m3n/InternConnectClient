@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { cvService } from '../../../services/cv';
-import { toast } from 'react-toastify';
-import Button from '../../../components/Button';
-import Card from '../../../components/Card';
-import Badge from '../../../components/Badge';
-import Table from '../../../components/Table';
-import Loader from '../../../components/Loader';
-import EmptyState from '../../../components/EmptyState';
-import CVPreviewModal from './CVPreviewModal';
+import { useState, useEffect } from "react";
+import { cvService } from "../../../services/cv";
+import { toast } from "react-toastify";
+import Button from "../../../components/Button";
+import Card from "../../../components/Card";
+import Badge from "../../../components/Badge";
+import Table from "../../../components/Table";
+import Loader from "../../../components/Loader";
+import EmptyState from "../../../components/EmptyState";
+import CVPreviewModal from "./CVPreviewModal";
 
 const LiaisonCVQueue = () => {
   const [pendingCVs, setPendingCVs] = useState([]);
@@ -24,34 +24,34 @@ const LiaisonCVQueue = () => {
       const data = await cvService.pending();
       setPendingCVs(data);
     } catch (error) {
-      toast.error('Failed to load pending CVs');
+      toast.error("Failed to load pending CVs");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (studentId, feedback = '') => {
+  const handleApprove = async (studentId, feedback = "") => {
     try {
       await cvService.approve(studentId, feedback);
-      setPendingCVs(prev => prev.filter(cv => cv.User.id !== studentId));
-      toast.success('CV approved successfully');
+      setPendingCVs((prev) => prev.filter((cv) => cv.User.id !== studentId));
+      toast.success("CV approved successfully");
     } catch (error) {
-      toast.error('Failed to approve CV');
+      toast.error("Failed to approve CV");
     }
   };
 
   const handleReject = async (studentId, feedback) => {
     if (!feedback.trim()) {
-      toast.error('Feedback is required when rejecting a CV');
+      toast.error("Feedback is required when rejecting a CV");
       return;
     }
 
     try {
       await cvService.reject(studentId, feedback);
-      setPendingCVs(prev => prev.filter(cv => cv.User.id !== studentId));
-      toast.success('CV rejected successfully');
+      setPendingCVs((prev) => prev.filter((cv) => cv.User.id !== studentId));
+      toast.success("CV rejected successfully");
     } catch (error) {
-      toast.error('Failed to reject CV');
+      toast.error("Failed to reject CV");
     }
   };
 
@@ -65,7 +65,7 @@ const LiaisonCVQueue = () => {
   };
 
   const handleQuickReject = (studentId) => {
-    const feedback = prompt('Please provide feedback for rejection:');
+    const feedback = prompt("Please provide feedback for rejection:");
     if (feedback) {
       handleReject(studentId, feedback);
     }
@@ -111,31 +111,23 @@ const LiaisonCVQueue = () => {
                   <Table.Row key={profile.id}>
                     <Table.Cell>
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {profile.User.full_name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {profile.student_id || 'N/A'}
-                        </p>
+                        <p className="font-medium text-gray-900">{profile.User.full_name}</p>
+                        <p className="text-sm text-gray-500">{profile.student_id || "N/A"}</p>
                       </div>
                     </Table.Cell>
-                    
+
                     <Table.Cell>
                       <div className="space-y-1">
                         <p className="text-sm text-gray-600">{profile.User.email}</p>
-                        {profile.phone && (
-                          <p className="text-sm text-gray-600">{profile.phone}</p>
-                        )}
+                        {profile.phone && <p className="text-sm text-gray-600">{profile.phone}</p>}
                       </div>
                     </Table.Cell>
 
                     <Table.Cell>
                       <div className="text-sm">
-                        <p className="text-gray-900">{profile.degree || 'Not specified'}</p>
-                        <p className="text-gray-500">Year {profile.year_of_study || 'N/A'}</p>
-                        {profile.skills && (
-                          <p className="text-xs text-gray-500 mt-1">{profile.skills}</p>
-                        )}
+                        <p className="text-gray-900">{profile.degree || "Not specified"}</p>
+                        <p className="text-gray-500">Year {profile.year_of_study || "N/A"}</p>
+                        {profile.skills && <p className="text-xs text-gray-500 mt-1">{profile.skills}</p>}
                       </div>
                     </Table.Cell>
 
@@ -143,11 +135,7 @@ const LiaisonCVQueue = () => {
                       <div className="flex items-center space-x-2">
                         <Badge variant={profile.cv_status}>{profile.cv_status}</Badge>
                         {profile.cv_file_path && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePreviewCV(profile)}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => handlePreviewCV(profile)}>
                             👁️
                           </Button>
                         )}
@@ -155,27 +143,22 @@ const LiaisonCVQueue = () => {
                     </Table.Cell>
 
                     <Table.Cell>
-                      <span className="text-sm text-gray-500">
-                        {new Date(profile.updated_at).toLocaleDateString()}
-                      </span>
+                      <span className="text-sm text-gray-500">{new Date(profile.updated_at).toLocaleDateString()}</span>
                     </Table.Cell>
 
                     <Table.Cell>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleQuickApprove(profile.User.id)}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleQuickReject(profile.User.id)}
-                        >
-                          Reject
-                        </Button>
-                      </div>
+                      {profile.cv_status === "pending" ? (
+                        <div className="flex space-x-2">
+                          <Button size="sm" onClick={() => handleQuickApprove(profile.User.id)}>
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => handleQuickReject(profile.User.id)}>
+                            Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <Badge variant={profile.cv_status}>{profile.cv_status}</Badge>
+                      )}
                     </Table.Cell>
                   </Table.Row>
                 ))}
