@@ -1,32 +1,32 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Controller, useForm } from 'react-hook-form';
-import { applicationsService } from '../../../services/applications';
-import { internshipsService } from '../../../services/internships';
-import { toast } from 'react-toastify';
-import Card from '../../../components/Card';
-import Badge from '../../../components/Badge';
-import Select from '../../../components/Select';
-import Table from '../../../components/Table';
-import Loader from '../../../components/Loader';
-import EmptyState from '../../../components/EmptyState';
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Controller, useForm } from "react-hook-form";
+import { applicationsService } from "../../../services/applications";
+import { internshipsService } from "../../../services/internships";
+import { toast } from "react-toastify";
+import Card from "../../../components/Card";
+import Badge from "../../../components/Badge";
+import Select from "../../../components/Select";
+import Table from "../../../components/Table";
+import Loader from "../../../components/Loader";
+import EmptyState from "../../../components/EmptyState";
 
 const LiaisonApplicants = () => {
   const [searchParams] = useSearchParams();
   const [applications, setApplications] = useState([]);
-  const [internships, setInternships] = useState([]);
+  const [internships, setInternships] = useState([]); // [{ value, label }]
   const [loading, setLoading] = useState(true);
   const [selectedInternship, setSelectedInternship] = useState(null);
 
   const { control } = useForm();
 
   const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'reviewing', label: 'Reviewing' },
-    { value: 'shortlisted', label: 'Shortlisted' },
-    { value: 'interviewed', label: 'Interviewed' },
-    { value: 'accepted', label: 'Accepted' },
-    { value: 'rejected', label: 'Rejected' }
+    { value: "pending", label: "Pending" },
+    { value: "reviewing", label: "Reviewing" },
+    { value: "shortlisted", label: "Shortlisted" },
+    { value: "interviewed", label: "Interviewed" },
+    { value: "accepted", label: "Accepted" },
+    { value: "rejected", label: "Rejected" },
   ];
 
   useEffect(() => {
@@ -34,26 +34,27 @@ const LiaisonApplicants = () => {
   }, []);
 
   useEffect(() => {
-    const internshipId = searchParams.get('internship');
-    if (internshipId && internships.length > 0) {
-      const internship = internships.find(i => i.id === internshipId);
-      if (internship) {
-        setSelectedInternship({ value: internship.id, label: internship.title });
-        fetchApplications(internshipId);
-      }
+    const internshipId = searchParams.get("internship");
+    if (!internshipId || internships.length === 0) return;
+
+    // options are { value, label }, not { id, ... }
+    const match = internships.find((i) => String(i.value) === String(internshipId));
+    if (match) {
+      setSelectedInternship(match);
+      fetchApplications(match.value);
     }
   }, [searchParams, internships]);
 
   const fetchInternships = async () => {
     try {
       const data = await internshipsService.list();
-      const options = data.internships.map(internship => ({
+      const options = (data.internships || []).map((internship) => ({
         value: internship.id,
-        label: internship.title
+        label: internship.title,
       }));
       setInternships(options);
     } catch (error) {
-      toast.error('Failed to load internships');
+      toast.error("Failed to load internships");
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ const LiaisonApplicants = () => {
       const data = await applicationsService.byInternship(internshipId);
       setApplications(data);
     } catch (error) {
-      toast.error('Failed to load applications');
+      toast.error("Failed to load applications");
     } finally {
       setLoading(false);
     }
@@ -88,23 +89,19 @@ const LiaisonApplicants = () => {
   const handleStatusChange = async (applicationId, newStatus) => {
     try {
       await applicationsService.changeStatus(applicationId, newStatus.value);
-      setApplications(prev => 
-        prev.map(app => 
-          app.id === applicationId 
-            ? { ...app, status: newStatus.value }
-            : app
-        )
+      setApplications((prev) =>
+        prev.map((app) => (app.id === applicationId ? { ...app, status: newStatus.value } : app))
       );
-      toast.success('Application status updated');
+      toast.success("Application status updated");
     } catch (error) {
-      toast.error('Failed to update status');
+      toast.error("Failed to update status");
     }
   };
 
   const getCVPreviewUrl = (cvPath) => {
     if (!cvPath) return null;
     const apiBase = import.meta.env.VITE_API_BASE_URL;
-    const serverBase = apiBase.replace('/api/v1', '');
+    const serverBase = apiBase.replace("/api/v1", "");
     return serverBase + cvPath;
   };
 
@@ -128,7 +125,7 @@ const LiaisonApplicants = () => {
           <Controller
             name="internship"
             control={control}
-            render={({ field }) => (
+            render={() => (
               <Select
                 label="Select Internship"
                 options={internships}
@@ -173,15 +170,13 @@ const LiaisonApplicants = () => {
                   <Table.Row key={application.id}>
                     <Table.Cell>
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {application.student.full_name}
-                        </p>
+                        <p className="font-medium text-gray-900">{application.student.full_name}</p>
                         <p className="text-sm text-gray-500">
-                          {application.student.StudentProfile?.student_id || 'N/A'}
+                          {application.student.StudentProfile?.student_id || "N/A"}
                         </p>
                       </div>
                     </Table.Cell>
-                    
+
                     <Table.Cell>
                       <div className="space-y-1">
                         <div className="flex items-center text-sm text-gray-600">
@@ -199,16 +194,12 @@ const LiaisonApplicants = () => {
 
                     <Table.Cell>
                       <div className="text-sm">
-                        <p className="text-gray-900">
-                          {application.student.StudentProfile?.degree || 'Not specified'}
-                        </p>
+                        <p className="text-gray-900">{application.student.StudentProfile?.degree || "Not specified"}</p>
                         <p className="text-gray-500">
-                          Year {application.student.StudentProfile?.year_of_study || 'N/A'}
+                          Year {application.student.StudentProfile?.year_of_study || "N/A"}
                         </p>
                         {application.student.StudentProfile?.skills && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {application.student.StudentProfile.skills}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-1">{application.student.StudentProfile.skills}</p>
                         )}
                       </div>
                     </Table.Cell>
@@ -219,7 +210,7 @@ const LiaisonApplicants = () => {
                           <Badge variant={application.student.StudentProfile.cv_status}>
                             {application.student.StudentProfile.cv_status}
                           </Badge>
-                          {application.student.StudentProfile.cv_status === 'approved' && (
+                          {application.student.StudentProfile.cv_status === "approved" && (
                             <a
                               href={getCVPreviewUrl(application.student.StudentProfile.cv_file_path)}
                               target="_blank"
@@ -238,7 +229,7 @@ const LiaisonApplicants = () => {
                     <Table.Cell>
                       <Select
                         options={statusOptions}
-                        value={statusOptions.find(option => option.value === application.status)}
+                        value={statusOptions.find((option) => option.value === application.status)}
                         onChange={(option) => handleStatusChange(application.id, option)}
                         className="min-w-[120px]"
                       />
